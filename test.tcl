@@ -1,10 +1,13 @@
 load ./tomcrypt.so
 set k [string repeat "\x00" 32]
-tomcrypt::cipherSetup key aes $k
-set c [key ecbEncrypt "Hello, World!"]
-binary scan $c H* hex
+tomcrypt::cipherSetup symkey blowfish $k
+set msg "Hello, World!   How are you?"
+symkey ecbEncrypt msg
+puts $msg
+binary scan $msg H* hex
 puts $hex
-puts [key ecbDecrypt $c]
-puts [key keySize 100]
-key test
-key done
+symkey ecbDecrypt msg
+puts $msg
+puts [symkey keySize 100]
+symkey test
+symkey done

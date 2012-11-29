@@ -14,30 +14,40 @@ static int
 cipher_endecrypt(const char *subcmd, TCcipher *sym, Tcl_Interp *interp,
                  int objc, Tcl_Obj * const *objv)
 {
-    unsigned char *in;
-    unsigned char out[MAXBLOCKSIZE];
+    Tcl_Obj *text;
+    unsigned char *buf;
+    int blocklen;
     int len;
     int err;
 
-    if(objc != 3){
+    if(objc == 4){
         ERRSTR(interp, "wrong # args: should be $cipher "
                "[ecbEncrypt/ecbDecrypt] data");
     }
 
-    in = Tcl_GetByteArrayFromObj(objv[2], NULL);
-    if(subcmd[3] == 'E'){
-        err = cipher_descriptor[sym->idx].ecb_encrypt(in, out, &sym->skey);
-    }else{
-        err = cipher_descriptor[sym->idx].ecb_decrypt(in, out, &sym->skey);
+    text = Tcl_ObjGetVar2(interp, objv[2], NULL, TCL_LEAVE_ERR_MSG);
+    if(text == NULL){
+        return TCL_ERROR;
+    }
+    buf = Tcl_GetByteArrayFromObj(text, &len);
+    blocklen = cipher_descriptor[sym->idx].block_length;
+    if(len < blocklen){
+        Tcl_SetObjResult(interp,
+            Tcl_ObjPrintf("var named %s is shorter than blocksize %d",
+                Tcl_GetString(objv[2]),
+                blocklen));
+        return TCL_ERROR;
     }
 
+    if(subcmd[3] == 'E'){
+        err = cipher_descriptor[sym->idx].ecb_encrypt(buf, buf, &sym->skey);
+    }else{
+        err = cipher_descriptor[sym->idx].ecb_decrypt(buf, buf, &sym->skey);
+    }
+    Tcl_InvalidateStringRep(text);
     if(err != CRYPT_OK){
-        bzero(out, MAXBLOCKSIZE);
         return tomerr(interp, err);
     }
-    len = cipher_descriptor[sym->idx].block_length;
-    Tcl_SetObjResult(interp, Tcl_NewByteArrayObj(out, len));
-    bzero(out, MAXBLOCKSIZE);
 
     return TCL_OK;
 }
