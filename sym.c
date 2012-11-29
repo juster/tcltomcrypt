@@ -91,7 +91,8 @@ const char *cipher_cmds[] = {
     "ecbDecrypt",
     "keySize",
     "test",
-    NULL };
+    NULL,
+};
 
 cipherproc *cipher_procs[] = {
     cipher_done,
