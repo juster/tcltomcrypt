@@ -19,6 +19,5 @@ struct subcmd {
 };
 
 int tomerr(Tcl_Interp *interp, int err);
-int Tomcrypt_CipherSetup(ClientData cdata, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[]);
 
 #endif
