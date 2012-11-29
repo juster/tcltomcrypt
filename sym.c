@@ -85,34 +85,35 @@ cipher_test(const char *subcmd, TCcipher *sym, Tcl_Interp *interp,
     return TCL_OK;
 }
 
-struct subcmd ensemble_subcmds[] = {
-    { "done", cipher_done },
-    { "ecbEncrypt", cipher_endecrypt },
-    { "ecbDecrypt", cipher_endecrypt },
-    { "keySize", cipher_keysize },
-    { "test", cipher_test },
-    { NULL, NULL },
+const char *cipher_cmds[] = {
+    "done",
+    "ecbEncrypt",
+    "ecbDecrypt",
+    "keySize",
+    "test",
+    NULL };
+
+cipherproc *cipher_procs[] = {
+    cipher_done,
+    cipher_endecrypt,
+    cipher_endecrypt,
+    cipher_keysize,
+    cipher_test,
 };
 
 static int
 Cipher_Ensemble(ClientData cdata, Tcl_Interp *interp,
     int objc, Tcl_Obj *const objv[])
 {
-    struct subcmd *subtbl;
     TCcipher *sym;
-    char *subcmd;
+    int idx;
 
-    sym = (TCcipher*)cdata;
-    subcmd = Tcl_GetString(objv[1]);
-    for(subtbl = ensemble_subcmds; subtbl->name; subtbl++){
-        if(strcmp(subcmd, subtbl->name) == 0){
-            return subtbl->proc(subcmd, sym, interp, objc, objv);
-        }
+    if(Tcl_GetIndexFromObj(interp, objv[1], cipher_cmds,
+        "cipher command", TCL_EXACT, &idx) == TCL_ERROR){
+        return TCL_ERROR;
     }
-
-    Tcl_SetObjResult(interp,
-        Tcl_ObjPrintf("unrecognized cipher command: %s", subcmd));
-    return TCL_ERROR;
+    sym = (TCcipher*)cdata;
+    return cipher_procs[idx](Tcl_GetString(objv[1]), sym, interp, objc, objv);
 }
 
 static void

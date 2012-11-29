@@ -11,12 +11,7 @@ typedef struct _TCcipher {
     symmetric_key skey;
 } TCcipher;
 
-typedef int subcmdproc(const char *, TCcipher *, Tcl_Interp *, int, Tcl_Obj * const *);
-
-struct subcmd {
-    char *name;
-    subcmdproc *proc;
-};
+typedef int cipherproc(const char *, TCcipher *, Tcl_Interp *, int, Tcl_Obj * const *);
 
 int tomerr(Tcl_Interp *interp, int err);
 
