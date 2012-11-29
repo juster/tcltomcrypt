@@ -126,7 +126,7 @@ Cipher_Cleanup(ClientData cdata)
 }
 
 static int
-Tomcrypt_CipherSetup(ClientData cdata, Tcl_Interp *interp,
+Tomcrypt_Cipher(ClientData cdata, Tcl_Interp *interp,
     int objc, Tcl_Obj *const objv[])
 {
     Tcl_Obj *obj;
@@ -213,6 +213,6 @@ init_symmetric(Tcl_Interp *interp)
 #undef R
 
     Tcl_CreateObjCommand(interp, "tomcrypt::cipher",
-                         Tomcrypt_CipherSetup, NULL, NULL);
+                         Tomcrypt_Cipher, NULL, NULL);
     return TCL_OK;
 }
