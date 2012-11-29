@@ -111,7 +111,7 @@ Cipher_Cleanup(ClientData cdata)
     TCcipher *sym;
     sym = (TCcipher*)cdata;
     cipher_descriptor[sym->idx].done(&sym->skey);
-    ckfree(sym);
+    ckfree((void *)sym);
     return;
 }
 
@@ -149,13 +149,13 @@ Tomcrypt_CipherSetup(ClientData cdata, Tcl_Interp *interp,
         return TCL_ERROR;
     }
 
-    if((sym = ckalloc(sizeof(TCcipher))) == NULL){
+    if((sym = (TCcipher*)ckalloc(sizeof(TCcipher))) == NULL){
         ERRSTR(interp, "memory allocation failed");
     }
     sym->idx = idx;
     err = cipher_descriptor[idx].setup(key, keylen, rounds, &sym->skey);
     if(err != CRYPT_OK){
-        ckfree(sym);
+        ckfree((void *)sym);
         return tomerr(interp, err);
     }
 
