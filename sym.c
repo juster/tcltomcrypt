@@ -20,9 +20,9 @@ cipher_endecrypt(const char *subcmd, TCcipher *sym, Tcl_Interp *interp,
     int len;
     int err;
 
-    if(objc == 4){
-        ERRSTR(interp, "wrong # args: should be $cipher "
-               "[ecbEncrypt/ecbDecrypt] data");
+    if(objc != 3){
+        Tcl_WrongNumArgs(interp, 2, objv, "varname");
+        return TCL_ERROR;
     }
 
     text = Tcl_ObjGetVar2(interp, objv[2], NULL, TCL_LEAVE_ERR_MSG);
@@ -138,8 +138,8 @@ Tomcrypt_CipherSetup(ClientData cdata, Tcl_Interp *interp,
     TCcipher *sym;
 
     if(objc < 4 || objc > 5){
-        ERRSTR(interp, "wrong # args: should be "
-               "\"cipherSetup dest name key ?rounds\"");
+        Tcl_WrongNumArgs(interp, 1, objv, "dest key ?rounds");
+        return TCL_ERROR;
     }
 
     key = Tcl_GetByteArrayFromObj(objv[3], &keylen);
