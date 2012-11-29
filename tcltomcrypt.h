@@ -3,7 +3,7 @@
 
 #define ERRSTR(INTERP, STR)\
     Tcl_SetObjResult(INTERP, Tcl_NewStringObj(STR, -1));\
-    return TCL_ERROR;
+    return TCL_ERROR
 
 typedef struct _TCcipher {
     char cmd[128];

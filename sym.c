@@ -21,8 +21,8 @@ cipher_endecrypt(const char *subcmd, TCcipher *sym, Tcl_Interp *interp,
 
     if(objc != 3){
         ERRSTR(interp, "wrong # args: should be $cipher "
-               "[ecbEncrypt/ecbDecrypt] data")
-            }
+               "[ecbEncrypt/ecbDecrypt] data");
+    }
 
     in = Tcl_GetByteArrayFromObj(objv[2], NULL);
     if(subcmd[3] == 'E'){
@@ -129,7 +129,7 @@ Tomcrypt_CipherSetup(ClientData cdata, Tcl_Interp *interp,
 
     if(objc < 4 || objc > 5){
         ERRSTR(interp, "wrong # args: should be "
-               "\"cipherSetup dest name key ?rounds\"")
+               "\"cipherSetup dest name key ?rounds\"");
     }
 
     key = Tcl_GetByteArrayFromObj(objv[3], &keylen);
@@ -150,7 +150,7 @@ Tomcrypt_CipherSetup(ClientData cdata, Tcl_Interp *interp,
     }
 
     if((sym = ckalloc(sizeof(TCcipher))) == NULL){
-        ERRSTR(interp, "memory allocation failed")
+        ERRSTR(interp, "memory allocation failed");
     }
     sym->idx = idx;
     err = cipher_descriptor[idx].setup(key, keylen, rounds, &sym->skey);
