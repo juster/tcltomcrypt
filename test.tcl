@@ -1,4 +1,8 @@
 load ./tomcrypt.so
+
+array set aes $tomcrypt::cipher(aes)
+puts "block length: $aes(block_length)"
+
 set k [string repeat "\x00" 32]
 tomcrypt::cipher symkey blowfish $k
 set msg "Hello, World!"

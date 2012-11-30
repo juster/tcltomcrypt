@@ -20,6 +20,9 @@ Tomcrypt_Init(Tcl_Interp *interp)
     if(Tcl_InitStubs(interp, TCL_VERSION, 0) == NULL){
         return TCL_ERROR;
     }
+
+    Tcl_CreateNamespace(interp, "tomcrypt", NULL, NULL);
+
     if((err = init_symmetric(interp)) != TCL_OK){
         return err;
     }

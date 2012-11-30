@@ -179,40 +179,76 @@ Tomcrypt_Cipher(ClientData cdata, Tcl_Interp *interp,
 }
 
 static int
-regciph(Tcl_Interp *interp,
-    const char *name,
-    const struct ltc_cipher_descriptor *desc)
+regciph(Tcl_Interp *interp, const char *name,
+    const struct ltc_cipher_descriptor *desc,
+    Tcl_Obj *ary)
 {
+    Tcl_Obj *elt;
+    Tcl_Obj *clist[12];
+    int i;
+
     if(register_cipher(desc) == -1){
         Tcl_SetObjResult(interp,
             Tcl_ObjPrintf("failed to register %s cipher", name));
         return TCL_ERROR;
     }
+
+    i = 0;
+#define STR(X) clist[i++] = Tcl_NewStringObj(X, -1)
+#define INT(X) clist[i++] = Tcl_NewIntObj(X)
+    STR("name");
+    STR(desc->name);
+    STR("ID");
+    STR(desc->name);    
+    STR("min_key_length");
+    INT(desc->min_key_length);
+    STR("man_key_length");
+    INT(desc->max_key_length);
+    STR("block_length");
+    INT(desc->block_length);
+    STR("default_rounds");
+    INT(desc->default_rounds);
+#undef STR
+#undef INT
+
+    elt = Tcl_NewStringObj(name, -1);
+    if(Tcl_ObjSetVar2(interp, ary, elt, Tcl_NewListObj(12, clist),
+        TCL_LEAVE_ERR_MSG) == NULL){
+        return TCL_ERROR;
+    }
+
     return TCL_OK;
 }
 
 int
 init_symmetric(Tcl_Interp *interp)
 {
-#define R(C) regciph(interp, #C, & C##_desc)
-    R(blowfish);
-    R(xtea);
-    R(rc2);
-    R(rc5);
-    R(rc6);
-    R(saferp);
-    R(aes);
-    R(twofish);
-    R(des);
-    R(des3);
-    R(cast5);
-    R(noekeon);
-    R(skipjack);
-    R(anubis);
-    R(khazad);
-    R(kseed);
-    R(kasumi);
-#undef R
+    Tcl_Obj *cipher;
+    int err;
+
+    cipher = Tcl_NewStringObj("tomcrypt::cipher", -1);
+#define RC(C)\
+    if((err = regciph(interp, #C, & C##_desc, cipher)) != TCL_OK){\
+        return TCL_ERROR;\
+    }
+    RC(blowfish);
+    RC(xtea);
+    RC(rc2);
+    RC(rc5);
+    RC(rc6);
+    RC(saferp);
+    RC(aes);
+    RC(twofish);
+    RC(des);
+    RC(des3);
+    RC(cast5);
+    RC(noekeon);
+    RC(skipjack);
+    RC(anubis);
+    RC(khazad);
+    RC(kseed);
+    RC(kasumi);
+#undef RC
 
     Tcl_CreateObjCommand(interp, "tomcrypt::cipher",
                          Tomcrypt_Cipher, NULL, NULL);
