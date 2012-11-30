@@ -9,6 +9,8 @@ proc hexdump {str} {
     puts $hex
 }
 
+puts "rounded keysize: [$blowfish(keysize) 101]"
+
 set k [string repeat "\x00" 32]
 set sym [tomcrypt::blowfish_setup $k]
 set pt "Hello!\x00\x00"

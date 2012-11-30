@@ -174,6 +174,33 @@ CipherSetup(ClientData cdata, Tcl_Interp *interp,
     return TCL_OK;
 }
 
+static int
+CipherKeysize(ClientData cdata, Tcl_Interp *interp,
+    int objc, Tcl_Obj *const objv[])
+{
+    CipherState *state;
+    Tcl_Obj *result;
+    int keySize;
+    int err;
+
+    if(objc != 2){
+        Tcl_WrongNumArgs(interp, 1, objv, "keysize");
+        return TCL_ERROR;
+    }
+
+    if(Tcl_GetIntFromObj(interp, objv[1], &keySize) == TCL_ERROR){
+        return TCL_ERROR;
+    }
+    state = (CipherState*)cdata;
+    if((err = state->desc->keysize(&keySize)) != CRYPT_OK){
+        return tomerr(interp, err);
+    }
+
+    result = Tcl_GetObjResult(interp);
+    Tcl_SetIntObj(result, keySize);
+    return TCL_OK;
+}
+
 static Tcl_Obj*
 descarray(CipherDesc *desc)
 {
@@ -206,6 +233,7 @@ descarray(CipherDesc *desc)
 #undef STR
 #undef INT
 #undef FMT
+#undef FUNC
     return Tcl_NewListObj(LEN, clist);
 #undef LEN
 }
@@ -232,6 +260,11 @@ createCipherCmds(Tcl_Interp *interp, CipherDesc *desc, Tcl_HashTable *hash)
     snprintf(cmd, 128, "::tomcrypt::%s_done", desc->name);
     Tcl_CreateObjCommand(interp, cmd, CipherDone,
         (ClientData)state, CipherCleanup);
+    snprintf(cmd, 128, "::tomcrypt::%s_keysize", desc->name);
+    Tcl_CreateObjCommand(interp, cmd, CipherKeysize,
+        (ClientData)state, NULL);
+
+    return;
 }
 
 static int
