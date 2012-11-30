@@ -2,10 +2,11 @@
 #include <tomcrypt.h>
 #include "tcltomcrypt.h"
 
+typedef const struct ltc_cipher_descriptor ciphdesc;
 typedef struct CipherState {
     int uid;
     Tcl_HashTable *hash;
-    const struct ltc_cipher_descriptor *desc;
+    ciphdesc *desc;
 } CipherState;
 
 static int
@@ -59,7 +60,7 @@ Tomcrypt_CipherSetup(ClientData cdata, Tcl_Interp *interp,
 }
 
 static Tcl_Obj*
-descarray(const struct ltc_cipher_descriptor *desc)
+descarray(ciphdesc *desc)
 {
     Tcl_Obj *clist[12];
     int i;
@@ -86,9 +87,7 @@ descarray(const struct ltc_cipher_descriptor *desc)
 }
 
 static void
-newciphercmds(Tcl_Interp *interp,
-    const struct ltc_cipher_descriptor *desc,
-    Tcl_HashTable *hash)
+newciphercmds(Tcl_Interp *interp, ciphdesc *desc, Tcl_HashTable *hash)
 {
     CipherState *state;
     char cmd[128];
@@ -109,7 +108,7 @@ newciphercmds(Tcl_Interp *interp,
 }
 
 static int
-regciph(Tcl_Interp *interp, const struct ltc_cipher_descriptor *desc,
+regciph(Tcl_Interp *interp, ciphdesc *desc,
     const char *ary, Tcl_HashTable *hash)
 {
     Tcl_Obj *obj;
