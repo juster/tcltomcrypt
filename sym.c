@@ -160,5 +160,5 @@ init_symmetric(Tcl_Interp *interp, Tcl_HashTable *hash)
 void
 cleanup_symmetric(Tcl_HashTable *hash)
 {
-    
+    /* TODO: free symmetric keys in symHash hash table */
 }

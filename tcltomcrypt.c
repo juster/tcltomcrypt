@@ -21,7 +21,7 @@ Tomcrypt_Cleanup(ClientData cdata)
 {
     Tomcrypt_State *state;
     state = (Tomcrypt_State*)cdata;
-    /* TODO: free symmetric keys in symHash hash table */
+    cleanup_symmetric(&state->symHash);
     Tcl_DeleteHashTable(&state->symHash);
     Tcl_Free((char*)cdata);
 }
