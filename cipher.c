@@ -52,6 +52,10 @@ CipherDone(ClientData cdata, Tcl_Interp *interp,
     state = (CipherState*)cdata;
     if((entryPtr = Tcl_FindHashEntry(state->hash, Tcl_GetString(objv[1])))){
         deleteSymKey(state->desc, entryPtr);
+    }else{
+        Tcl_SetStringObj(Tcl_GetObjResult(interp),
+            "invalid symkey provided", -1);
+        return TCL_ERROR;
     }
 
     return TCL_OK;
@@ -90,7 +94,7 @@ cipheraction(CipherState *state, Tcl_Interp *interp,
     entryPtr = Tcl_FindHashEntry(state->hash, Tcl_GetString(objv[2]));
     if(entryPtr == NULL){
         Tcl_SetStringObj(Tcl_GetObjResult(interp),
-            "invalid symkey handle provided", -1);
+            "invalid symkey provided", -1);
         return TCL_ERROR;
     }
     skey = (symmetric_key*)Tcl_GetHashValue(entryPtr);
@@ -133,7 +137,7 @@ CipherSetup(ClientData cdata, Tcl_Interp *interp,
     CipherState *state;
     Tcl_HashEntry *entry;
     Tcl_Obj *result;
-    char name[32];
+    char name[64];
     int new;
 
     if(objc < 2 || objc > 3){
@@ -156,7 +160,7 @@ CipherSetup(ClientData cdata, Tcl_Interp *interp,
     }
 
     /* Store the tomcrypt symmetric_key inside our internal state. */
-    snprintf(name, 32, "symkey%d", ++state->uid);
+    snprintf(name, 64, "%skey%d", state->desc->name, ++state->uid);
     result = Tcl_GetObjResult(interp);
     Tcl_SetStringObj(result, name, -1);
     entry = Tcl_CreateHashEntry(state->hash, name, &new);
