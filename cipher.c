@@ -188,7 +188,7 @@ descarray(CipherDesc *desc)
 }
 
 static void
-newciphercmds(Tcl_Interp *interp, CipherDesc *desc, Tcl_HashTable *hash)
+createCipherCmds(Tcl_Interp *interp, CipherDesc *desc, Tcl_HashTable *hash)
 {
     CipherState *state;
     char cmd[128];
@@ -231,7 +231,7 @@ regCipherTcl(Tcl_Interp *interp, CipherDesc *desc,
 
     hashPtr = &state->cipherHashes[state->cipherHashCount++];
     Tcl_InitHashTable(hashPtr, TCL_STRING_KEYS);
-    newciphercmds(interp, desc, hashPtr);
+    createCipherCmds(interp, desc, hashPtr);
 
     return TCL_OK;
 }
