@@ -14,7 +14,7 @@ set sym [tomcrypt::blowfish_setup $k]
 set pt "Hello!\x00\x00"
 puts $pt
 hexdump $pt
-set ct [tomcrypt::blowfish_ecb_encrypt $pt $sym]
+set ct [$blowfish(ecb_encrypt) $pt $sym]
 puts "<cipher text>"
 hexdump $ct
 set pt [tomcrypt::blowfish_ecb_decrypt $ct $sym]

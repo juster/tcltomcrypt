@@ -177,12 +177,15 @@ CipherSetup(ClientData cdata, Tcl_Interp *interp,
 static Tcl_Obj*
 descarray(CipherDesc *desc)
 {
-    Tcl_Obj *clist[12];
+#define LEN 22
+    Tcl_Obj *clist[LEN];
     int i;
 
     i = 0;
 #define STR(X) clist[i++] = Tcl_NewStringObj(X, -1)
-#define INT(X) clist[i++] = Tcl_NewIntObj(X)
+#define INT clist[i++] = Tcl_NewIntObj
+#define FMT clist[i++] = Tcl_ObjPrintf
+#define FUNC(X) STR(X); FMT("::tomcrypt::%s_%s", desc->name, X);
     STR("name");
     STR(desc->name);
     STR("ID");
@@ -195,10 +198,16 @@ descarray(CipherDesc *desc)
     INT(desc->block_length);
     STR("default_rounds");
     INT(desc->default_rounds);
+    FUNC("setup");
+    FUNC("ecb_encrypt");
+    FUNC("ecb_decrypt");
+    FUNC("done");
+    FUNC("keysize");
 #undef STR
 #undef INT
-
-    return Tcl_NewListObj(12, clist);
+#undef FMT
+    return Tcl_NewListObj(LEN, clist);
+#undef LEN
 }
 
 static void
