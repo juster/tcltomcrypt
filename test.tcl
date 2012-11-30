@@ -1,9 +1,15 @@
 load ./tomcrypt.so
 
-array set aes $tomcrypt::cipher(aes)
-puts "block length: $aes(block_length)"
+array set blowfish $tomcrypt::cipher(blowfish)
+puts "block length: $blowfish(block_length)"
 
 set k [string repeat "\x00" 32]
+set sym [tomcrypt::blowfish_setup $k]
+exit
+$sym ecb_encrypt 
+puts $sym
+exit 0
+
 tomcrypt::cipher symkey blowfish $k
 set msg "Hello, World!"
 symkey ecbEncrypt msg
