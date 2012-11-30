@@ -39,6 +39,9 @@ Tomcrypt_Init(Tcl_Interp *interp)
     if(Tcl_InitStubs(interp, TCL_VERSION, 0) == NULL){
         return TCL_ERROR;
     }
+    if(Tcl_PkgProvide(interp, "tomcrypt", "0.01") != TCL_OK){
+        return TCL_ERROR;
+    }
 
     state = (TomcryptState*)Tcl_Alloc(sizeof(TomcryptState));
     state->cipherHashCount = 0;

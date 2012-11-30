@@ -1,4 +1,5 @@
-load ./tomcrypt.so
+lappend auto_path .
+package require tomcrypt
 
 array set blowfish $tomcrypt::cipher(blowfish)
 puts "block length: $blowfish(block_length)"
