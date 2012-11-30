@@ -212,9 +212,10 @@ newciphercmds(Tcl_Interp *interp, ciphdesc *desc, Tcl_HashTable *hash)
 
 static int
 regciph(Tcl_Interp *interp, ciphdesc *desc,
-    const char *ary, Tcl_HashTable *hash)
+    const char *ary, Tomcrypt_State *state)
 {
     Tcl_Obj *obj;
+    Tcl_HashTable *hashPtr;
 
     if(register_cipher(desc) == -1){
         Tcl_SetObjResult(interp,
@@ -226,16 +227,19 @@ regciph(Tcl_Interp *interp, ciphdesc *desc,
         TCL_LEAVE_ERR_MSG) == NULL){
         return TCL_ERROR;
     }
-    newciphercmds(interp, desc, hash);
+
+    hashPtr = &state->symHashes[state->symHashCount++];
+    Tcl_InitHashTable(hashPtr, TCL_STRING_KEYS);
+    newciphercmds(interp, desc, hashPtr);
 
     return TCL_OK;
 }
 
 int
-init_symmetric(Tcl_Interp *interp, Tcl_HashTable *hash)
+init_symmetric(Tcl_Interp *interp, Tomcrypt_State *state)
 {
 #define RC(C)\
-    if(regciph(interp, & C##_desc, "tomcrypt::cipher", hash) != TCL_OK)\
+    if(regciph(interp, & C##_desc, "tomcrypt::cipher", state) != TCL_OK)\
         return TCL_ERROR;
     RC(blowfish);
     RC(xtea);
@@ -257,10 +261,4 @@ init_symmetric(Tcl_Interp *interp, Tcl_HashTable *hash)
 #undef RC
 
     return TCL_OK;
-}
-
-void
-cleanup_symmetric(Tcl_HashTable *hash)
-{
-    /* TODO: free symmetric keys in symHash hash table */
 }

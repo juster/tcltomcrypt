@@ -12,19 +12,20 @@ tomerr(Tcl_Interp *interp, int err)
     return TCL_ERROR;
 }
 
-typedef struct Tomcrypt_State {
-    Tcl_HashTable symHash;
-} Tomcrypt_State;
-
 void
 Tomcrypt_Cleanup(ClientData cdata)
 {
     Tomcrypt_State *state;
+    Tcl_HashTable *symHash;
+    int i;
+
     fprintf(stderr, "DBG: Tomcrypt_Cleanup\n");
     state = (Tomcrypt_State*)cdata;
-    cleanup_symmetric(&state->symHash);
-    Tcl_DeleteHashTable(&state->symHash);
-    Tcl_Free((char*)cdata);
+    for(i=0; i<state->symHashCount; i++){
+        fprintf(stderr, "DBG: deleting hash %d\n", i);
+        Tcl_DeleteHashTable(state->symHashes+i);
+    }
+    Tcl_Free((char*)state);
 }
 
 int
@@ -33,17 +34,17 @@ Tomcrypt_Init(Tcl_Interp *interp)
     Tcl_Namespace *ns;
     Tomcrypt_State *state;
     int err;
+    int i;
 
     if(Tcl_InitStubs(interp, TCL_VERSION, 0) == NULL){
         return TCL_ERROR;
     }
 
     state = (Tomcrypt_State*)Tcl_Alloc(sizeof(Tomcrypt_State));
-    Tcl_InitHashTable(&state->symHash, TCL_STRING_KEYS);
-
-    ns = Tcl_CreateNamespace(interp, "tomcrypt", (ClientData)state, Tomcrypt_Cleanup);
-
-    if((err = init_symmetric(interp, &state->symHash)) != TCL_OK){
+    state->symHashCount = 0;
+    ns = Tcl_CreateNamespace(interp, "tomcrypt",
+        (ClientData)state, Tomcrypt_Cleanup);
+    if((err = init_symmetric(interp, state)) != TCL_OK){
         Tcl_DeleteNamespace(ns);
         return err;
     }
