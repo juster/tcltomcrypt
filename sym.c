@@ -11,14 +11,44 @@ typedef struct CipherState {
 } CipherState;
 
 static symmetric_key *
-lookupSymKey(Tcl_HashTable *hash, Tcl_Obj *symkey)
+lookupSymKey(Tcl_Interp *interp, Tcl_HashTable *hash, Tcl_Obj *symkey)
 {
     Tcl_HashEntry *entry;
     entry = Tcl_FindHashEntry(hash, Tcl_GetString(symkey));
     if(entry == NULL){
+        Tcl_SetStringObj(Tcl_GetObjResult(interp),
+            "invalid symkey handle provided", -1);
         return NULL;
     }
     return (symmetric_key *)Tcl_GetHashValue(entry);
+}
+
+void
+Tomcrypt_Cipher_Cleanup(ClientData cdata)
+{
+    fprintf(stderr, "DBG: Tomcrypt_Cipher_Cleanup\n");
+    return;
+}
+
+Tomcrypt_CipherDone(ClientData cdata, Tcl_Interp *interp,
+    int objc, Tcl_Obj *const objv[])
+{
+    CipherState *state;
+    symmetric_key *skey;
+    int err;
+
+    if(objc != 2){
+        Tcl_WrongNumArgs(interp, 1, objv, "symkey");
+        return TCL_ERROR;
+    }
+
+    skey = lookupSymKey(interp, state->hash, objv[1]);
+    if(skey == NULL){
+        return TCL_ERROR;
+    }
+    state->desc->done(skey);
+
+    return TCL_OK;
 }
 
 static int
@@ -49,9 +79,8 @@ cipheraction(CipherState *state, Tcl_Interp *interp,
         Tcl_SetStringObj(result, "bytes are longer than cipher block length", -1);
         return TCL_ERROR;
     }
-    skey = lookupSymKey(state->hash, objv[2]);
+    skey = lookupSymKey(interp, state->hash, objv[2]);
     if(skey == NULL){
-        Tcl_SetStringObj(result, "invalid symkey handle provided", -1);
         return TCL_ERROR;
     }
     if((err = func(buf, out, skey)) != CRYPT_OK){
@@ -176,8 +205,9 @@ newciphercmds(Tcl_Interp *interp, ciphdesc *desc, Tcl_HashTable *hash)
     snprintf(cmd, 128, "tomcrypt::%s_ecb_decrypt", desc->name);
     Tcl_CreateObjCommand(interp, cmd, Tomcrypt_CipherECBDecrypt,
         (ClientData)state, NULL);
-/*     snprintf(cmd, 128, "tomcrypt::%s_done", desc->name); */
-/*     Tcl_CreateObjCommand(interp, cmd, Tomcrypt_CipherDone, desc, NULL); */
+    snprintf(cmd, 128, "tomcrypt::%s_done", desc->name);
+    Tcl_CreateObjCommand(interp, cmd, Tomcrypt_CipherDone,
+        (ClientData)state, Tomcrypt_Cipher_Cleanup);
 }
 
 static int

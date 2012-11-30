@@ -20,6 +20,7 @@ void
 Tomcrypt_Cleanup(ClientData cdata)
 {
     Tomcrypt_State *state;
+    fprintf(stderr, "DBG: Tomcrypt_Cleanup\n");
     state = (Tomcrypt_State*)cdata;
     cleanup_symmetric(&state->symHash);
     Tcl_DeleteHashTable(&state->symHash);

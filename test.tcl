@@ -19,4 +19,6 @@ hexdump $ct
 set pt [tomcrypt::blowfish_ecb_decrypt $ct $sym]
 puts $pt
 hexdump $pt
-exit 0
+
+namespace delete tomcrypt
+
