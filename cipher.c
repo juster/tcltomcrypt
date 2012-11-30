@@ -211,16 +211,16 @@ createCipherCmds(Tcl_Interp *interp, CipherDesc *desc, Tcl_HashTable *hash)
     state->uid = 0;
     state->hash = hash;
     state->desc = desc;
-    snprintf(cmd, 128, "tomcrypt::%s_setup", desc->name);
+    snprintf(cmd, 128, "::tomcrypt::%s_setup", desc->name);
     Tcl_CreateObjCommand(interp, cmd, CipherSetup,
         (ClientData)state, NULL);
-    snprintf(cmd, 128, "tomcrypt::%s_ecb_encrypt", desc->name);
+    snprintf(cmd, 128, "::tomcrypt::%s_ecb_encrypt", desc->name);
     Tcl_CreateObjCommand(interp, cmd, CipherECBEncrypt,
         (ClientData)state, NULL);
-    snprintf(cmd, 128, "tomcrypt::%s_ecb_decrypt", desc->name);
+    snprintf(cmd, 128, "::tomcrypt::%s_ecb_decrypt", desc->name);
     Tcl_CreateObjCommand(interp, cmd, CipherECBDecrypt,
         (ClientData)state, NULL);
-    snprintf(cmd, 128, "tomcrypt::%s_done", desc->name);
+    snprintf(cmd, 128, "::tomcrypt::%s_done", desc->name);
     Tcl_CreateObjCommand(interp, cmd, CipherDone,
         (ClientData)state, CipherCleanup);
 }
@@ -254,7 +254,7 @@ int
 initCiphers(Tcl_Interp *interp, TomcryptState *state)
 {
 #define RC(C)\
-    if(regCipherTcl(interp, & C##_desc, "tomcrypt::cipher", state) != TCL_OK)\
+    if(regCipherTcl(interp, & C##_desc, "::tomcrypt::cipher", state) != TCL_OK)\
         return TCL_ERROR;
     RC(blowfish);
     RC(xtea);

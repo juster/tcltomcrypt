@@ -45,7 +45,7 @@ Tomcrypt_Init(Tcl_Interp *interp)
 
     state = (TomcryptState*)Tcl_Alloc(sizeof(TomcryptState));
     state->cipherHashCount = 0;
-    ns = Tcl_CreateNamespace(interp, "tomcrypt",
+    ns = Tcl_CreateNamespace(interp, "::tomcrypt",
         (ClientData)state, TomcryptCleanup);
     if((err = initCiphers(interp, state)) != TCL_OK){
         Tcl_DeleteNamespace(ns);
