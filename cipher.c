@@ -2,12 +2,12 @@
 #include <tomcrypt.h>
 #include "tcltomcrypt.h"
 
-typedef const struct ltc_cipher_descriptor ciphdesc;
-typedef (*cipherfunc)(const unsigned char *, unsigned char *, symmetric_key *);
+typedef const struct ltc_cipher_descriptor CipherDesc;
+typedef (*CipherFunc)(const unsigned char *, unsigned char *, symmetric_key *);
 typedef struct CipherState {
     int uid;
     Tcl_HashTable *hash;
-    ciphdesc *desc;
+    CipherDesc *desc;
 } CipherState;
 
 static symmetric_key *
@@ -23,14 +23,15 @@ lookupSymKey(Tcl_Interp *interp, Tcl_HashTable *hash, Tcl_Obj *symkey)
     return (symmetric_key *)Tcl_GetHashValue(entry);
 }
 
-void
-Tomcrypt_Cipher_Cleanup(ClientData cdata)
+static void
+CipherCleanup(ClientData cdata)
 {
-    fprintf(stderr, "DBG: Tomcrypt_Cipher_Cleanup\n");
+    fprintf(stderr, "DBG: CipherCleanup\n");
     return;
 }
 
-Tomcrypt_CipherDone(ClientData cdata, Tcl_Interp *interp,
+static int
+CipherDone(ClientData cdata, Tcl_Interp *interp,
     int objc, Tcl_Obj *const objv[])
 {
     CipherState *state;
@@ -54,7 +55,7 @@ Tomcrypt_CipherDone(ClientData cdata, Tcl_Interp *interp,
 static int
 cipheraction(CipherState *state, Tcl_Interp *interp,
     int objc, Tcl_Obj *const objv[],
-    cipherfunc func)
+    CipherFunc func)
 {
     symmetric_key *skey;
 
@@ -92,7 +93,7 @@ cipheraction(CipherState *state, Tcl_Interp *interp,
 }
 
 static int
-Tomcrypt_CipherECBEncrypt(ClientData cdata, Tcl_Interp *interp,
+CipherECBEncrypt(ClientData cdata, Tcl_Interp *interp,
     int objc, Tcl_Obj *const objv[])
 {
     CipherState *state;
@@ -101,7 +102,7 @@ Tomcrypt_CipherECBEncrypt(ClientData cdata, Tcl_Interp *interp,
 }
 
 static int
-Tomcrypt_CipherECBDecrypt(ClientData cdata, Tcl_Interp *interp,
+CipherECBDecrypt(ClientData cdata, Tcl_Interp *interp,
     int objc, Tcl_Obj *const objv[])
 {
     CipherState *state;
@@ -110,7 +111,7 @@ Tomcrypt_CipherECBDecrypt(ClientData cdata, Tcl_Interp *interp,
 }
 
 static int
-Tomcrypt_CipherSetup(ClientData cdata, Tcl_Interp *interp,
+CipherSetup(ClientData cdata, Tcl_Interp *interp,
     int objc, Tcl_Obj *const objv[])
 {
     symmetric_key *symkey;
@@ -160,7 +161,7 @@ Tomcrypt_CipherSetup(ClientData cdata, Tcl_Interp *interp,
 }
 
 static Tcl_Obj*
-descarray(ciphdesc *desc)
+descarray(CipherDesc *desc)
 {
     Tcl_Obj *clist[12];
     int i;
@@ -187,7 +188,7 @@ descarray(ciphdesc *desc)
 }
 
 static void
-newciphercmds(Tcl_Interp *interp, ciphdesc *desc, Tcl_HashTable *hash)
+newciphercmds(Tcl_Interp *interp, CipherDesc *desc, Tcl_HashTable *hash)
 {
     CipherState *state;
     char cmd[128];
@@ -197,22 +198,22 @@ newciphercmds(Tcl_Interp *interp, ciphdesc *desc, Tcl_HashTable *hash)
     state->hash = hash;
     state->desc = desc;
     snprintf(cmd, 128, "tomcrypt::%s_setup", desc->name);
-    Tcl_CreateObjCommand(interp, cmd, Tomcrypt_CipherSetup,
+    Tcl_CreateObjCommand(interp, cmd, CipherSetup,
         (ClientData)state, NULL);
     snprintf(cmd, 128, "tomcrypt::%s_ecb_encrypt", desc->name);
-    Tcl_CreateObjCommand(interp, cmd, Tomcrypt_CipherECBEncrypt,
+    Tcl_CreateObjCommand(interp, cmd, CipherECBEncrypt,
         (ClientData)state, NULL);
     snprintf(cmd, 128, "tomcrypt::%s_ecb_decrypt", desc->name);
-    Tcl_CreateObjCommand(interp, cmd, Tomcrypt_CipherECBDecrypt,
+    Tcl_CreateObjCommand(interp, cmd, CipherECBDecrypt,
         (ClientData)state, NULL);
     snprintf(cmd, 128, "tomcrypt::%s_done", desc->name);
-    Tcl_CreateObjCommand(interp, cmd, Tomcrypt_CipherDone,
-        (ClientData)state, Tomcrypt_Cipher_Cleanup);
+    Tcl_CreateObjCommand(interp, cmd, CipherDone,
+        (ClientData)state, CipherCleanup);
 }
 
 static int
-regciph(Tcl_Interp *interp, ciphdesc *desc,
-    const char *ary, Tomcrypt_State *state)
+regCipherTcl(Tcl_Interp *interp, CipherDesc *desc,
+    const char *ary, TomcryptState *state)
 {
     Tcl_Obj *obj;
     Tcl_HashTable *hashPtr;
@@ -228,7 +229,7 @@ regciph(Tcl_Interp *interp, ciphdesc *desc,
         return TCL_ERROR;
     }
 
-    hashPtr = &state->symHashes[state->symHashCount++];
+    hashPtr = &state->cipherHashes[state->cipherHashCount++];
     Tcl_InitHashTable(hashPtr, TCL_STRING_KEYS);
     newciphercmds(interp, desc, hashPtr);
 
@@ -236,10 +237,10 @@ regciph(Tcl_Interp *interp, ciphdesc *desc,
 }
 
 int
-init_symmetric(Tcl_Interp *interp, Tomcrypt_State *state)
+initCiphers(Tcl_Interp *interp, TomcryptState *state)
 {
 #define RC(C)\
-    if(regciph(interp, & C##_desc, "tomcrypt::cipher", state) != TCL_OK)\
+    if(regCipherTcl(interp, & C##_desc, "tomcrypt::cipher", state) != TCL_OK)\
         return TCL_ERROR;
     RC(blowfish);
     RC(xtea);
