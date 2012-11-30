@@ -3,11 +3,82 @@
 #include "tcltomcrypt.h"
 
 typedef const struct ltc_cipher_descriptor ciphdesc;
+typedef (*cipherfunc)(const unsigned char *, unsigned char *, symmetric_key *);
 typedef struct CipherState {
     int uid;
     Tcl_HashTable *hash;
     ciphdesc *desc;
 } CipherState;
+
+static symmetric_key *
+lookupSymKey(Tcl_HashTable *hash, Tcl_Obj *symkey)
+{
+    Tcl_HashEntry *entry;
+    entry = Tcl_FindHashEntry(hash, Tcl_GetString(symkey));
+    if(entry == NULL){
+        return NULL;
+    }
+    return (symmetric_key *)Tcl_GetHashValue(entry);
+}
+
+static int
+cipheraction(CipherState *state, Tcl_Interp *interp,
+    int objc, Tcl_Obj *const objv[],
+    cipherfunc func)
+{
+    symmetric_key *skey;
+
+    Tcl_Obj *bufObj;
+    unsigned char *buf;
+    int bufLen;
+    unsigned char out[MAXBLOCKSIZE];
+    Tcl_Obj *result;
+    int err;
+
+    if(objc != 3){
+        Tcl_WrongNumArgs(interp, 1, objv, "bytes symkey");
+        return TCL_ERROR;
+    }
+    result = Tcl_GetObjResult(interp);
+
+    buf = Tcl_GetByteArrayFromObj(objv[1], &bufLen);
+    if(bufLen < state->desc->block_length){
+        Tcl_SetStringObj(result, "bytes are shorter than cipher block length", -1);
+        return TCL_ERROR;
+    }else if(bufLen > state->desc->block_length){
+        Tcl_SetStringObj(result, "bytes are longer than cipher block length", -1);
+        return TCL_ERROR;
+    }
+    skey = lookupSymKey(state->hash, objv[2]);
+    if(skey == NULL){
+        Tcl_SetStringObj(result, "invalid symkey handle provided", -1);
+        return TCL_ERROR;
+    }
+    if((err = func(buf, out, skey)) != CRYPT_OK){
+        return tomerr(interp, err);
+    }
+    
+    Tcl_SetByteArrayObj(result, out, bufLen);
+    return TCL_OK;
+}
+
+static int
+Tomcrypt_CipherECBEncrypt(ClientData cdata, Tcl_Interp *interp,
+    int objc, Tcl_Obj *const objv[])
+{
+    CipherState *state;
+    state = (CipherState*)cdata;
+    return cipheraction(state, interp, objc, objv, state->desc->ecb_encrypt);
+}
+
+static int
+Tomcrypt_CipherECBDecrypt(ClientData cdata, Tcl_Interp *interp,
+    int objc, Tcl_Obj *const objv[])
+{
+    CipherState *state;
+    state = (CipherState*)cdata;
+    return cipheraction(state, interp, objc, objv, state->desc->ecb_decrypt);
+}
 
 static int
 Tomcrypt_CipherSetup(ClientData cdata, Tcl_Interp *interp,
@@ -99,10 +170,12 @@ newciphercmds(Tcl_Interp *interp, ciphdesc *desc, Tcl_HashTable *hash)
     snprintf(cmd, 128, "tomcrypt::%s_setup", desc->name);
     Tcl_CreateObjCommand(interp, cmd, Tomcrypt_CipherSetup,
         (ClientData)state, NULL);
-/*     snprintf(cmd, 128, "tomcrypt::%s_ecb_encrypt", desc->name); */
-/*     Tcl_CreateObjCommand(interp, cmd, Tomcrypt_CipherECBEncrypt, desc, NULL); */
-/*     snprintf(cmd, 128, "tomcrypt::%s_ecb_decrypt", desc->name); */
-/*     Tcl_CreateObjCommand(interp, cmd, Tomcrypt_CipherECBDecrypt, desc, NULL); */
+    snprintf(cmd, 128, "tomcrypt::%s_ecb_encrypt", desc->name);
+    Tcl_CreateObjCommand(interp, cmd, Tomcrypt_CipherECBEncrypt,
+        (ClientData)state, NULL);
+    snprintf(cmd, 128, "tomcrypt::%s_ecb_decrypt", desc->name);
+    Tcl_CreateObjCommand(interp, cmd, Tomcrypt_CipherECBDecrypt,
+        (ClientData)state, NULL);
 /*     snprintf(cmd, 128, "tomcrypt::%s_done", desc->name); */
 /*     Tcl_CreateObjCommand(interp, cmd, Tomcrypt_CipherDone, desc, NULL); */
 }
