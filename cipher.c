@@ -10,23 +10,30 @@ typedef struct CipherState {
     CipherDesc *desc;
 } CipherState;
 
-static symmetric_key *
-lookupSymKey(Tcl_Interp *interp, Tcl_HashTable *hash, Tcl_Obj *symkey)
+void
+deleteSymKey(CipherDesc *desc, Tcl_HashEntry *entryPtr)
 {
-    Tcl_HashEntry *entry;
-    entry = Tcl_FindHashEntry(hash, Tcl_GetString(symkey));
-    if(entry == NULL){
-        Tcl_SetStringObj(Tcl_GetObjResult(interp),
-            "invalid symkey handle provided", -1);
-        return NULL;
-    }
-    return (symmetric_key *)Tcl_GetHashValue(entry);
+    symmetric_key *symKey;
+    symKey = (symmetric_key*)Tcl_GetHashValue(entryPtr);
+    Tcl_DeleteHashEntry(entryPtr);
+    desc->done(symKey);
+    Tcl_Free((char*)symKey);
+    return;
 }
 
 static void
 CipherCleanup(ClientData cdata)
 {
+    CipherState *state;
+    Tcl_HashEntry *entryPtr;
+    Tcl_HashSearch search;
+
     fprintf(stderr, "DBG: CipherCleanup\n");
+    state = (CipherState*)cdata;
+    while(entryPtr = Tcl_FirstHashEntry(state->hash, &search)){
+        fprintf(stderr, "DBG: deleting symkey for %s\n", state->desc->name);
+        deleteSymKey(state->desc, entryPtr);
+    }
     return;
 }
 
@@ -35,19 +42,17 @@ CipherDone(ClientData cdata, Tcl_Interp *interp,
     int objc, Tcl_Obj *const objv[])
 {
     CipherState *state;
-    symmetric_key *skey;
+    Tcl_HashEntry *entryPtr;
     int err;
 
     if(objc != 2){
         Tcl_WrongNumArgs(interp, 1, objv, "symkey");
         return TCL_ERROR;
     }
-
-    skey = lookupSymKey(interp, state->hash, objv[1]);
-    if(skey == NULL){
-        return TCL_ERROR;
+    state = (CipherState*)cdata;
+    if((entryPtr = Tcl_FindHashEntry(state->hash, Tcl_GetString(objv[1])))){
+        deleteSymKey(state->desc, entryPtr);
     }
-    state->desc->done(skey);
 
     return TCL_OK;
 }
@@ -57,6 +62,7 @@ cipheraction(CipherState *state, Tcl_Interp *interp,
     int objc, Tcl_Obj *const objv[],
     CipherFunc func)
 {
+    Tcl_HashEntry *entryPtr;
     symmetric_key *skey;
 
     Tcl_Obj *bufObj;
@@ -80,10 +86,14 @@ cipheraction(CipherState *state, Tcl_Interp *interp,
         Tcl_SetStringObj(result, "bytes are longer than cipher block length", -1);
         return TCL_ERROR;
     }
-    skey = lookupSymKey(interp, state->hash, objv[2]);
-    if(skey == NULL){
+
+    entryPtr = Tcl_FindHashEntry(state->hash, Tcl_GetString(objv[2]));
+    if(entryPtr == NULL){
+        Tcl_SetStringObj(Tcl_GetObjResult(interp),
+            "invalid symkey handle provided", -1);
         return TCL_ERROR;
     }
+    skey = (symmetric_key*)Tcl_GetHashValue(entryPtr);
     if((err = func(buf, out, skey)) != CRYPT_OK){
         return tomerr(interp, err);
     }

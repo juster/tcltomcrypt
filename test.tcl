@@ -20,5 +20,10 @@ set pt [tomcrypt::blowfish_ecb_decrypt $ct $sym]
 puts $pt
 hexdump $pt
 
+puts "sym = $sym"
+tomcrypt::aes_ecb_encrypt [string repeat "\x00" 16] $sym
+
+tomcrypt::blowfish_done $sym
+
 namespace delete tomcrypt
 
