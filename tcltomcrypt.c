@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include <tcl.h>
 #include <tomcrypt.h>
 #include "tcltomcrypt.h"
