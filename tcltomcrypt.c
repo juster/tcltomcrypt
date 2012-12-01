@@ -2,6 +2,11 @@
 #include <tomcrypt.h>
 #include "tcltomcrypt.h"
 
+struct TomcryptState {
+    int hashCount;
+    Tcl_HashTable hashes[TAB_SIZE]; /* TAB_SIZE from tomcrypt.h */
+};
+
 int
 tomerr(Tcl_Interp *interp, int err)
 {
@@ -15,16 +20,25 @@ static void
 TomcryptCleanup(ClientData cdata)
 {
     TomcryptState *state;
-    Tcl_HashTable *cipherHash;
+    Tcl_HashTable *hash;
     int i;
 
     fprintf(stderr, "DBG: TomcryptCleanup\n");
     state = (TomcryptState*)cdata;
-    for(i=0; i<state->cipherHashCount; i++){
+    for(i=0; i<state->hashCount; i++){
         fprintf(stderr, "DBG: deleting hash %d\n", i);
-        Tcl_DeleteHashTable(state->cipherHashes+i);
+        Tcl_DeleteHashTable(state->hashes+i);
     }
     Tcl_Free((char*)state);
+}
+
+Tcl_HashTable *
+TomcryptHashTable(TomcryptState *state)
+{
+    Tcl_HashTable *hashPtr;
+    hashPtr = &state->hashes[state->hashCount++];
+    Tcl_InitHashTable(hashPtr, TCL_STRING_KEYS);
+    return hashPtr;
 }
 
 int
@@ -43,7 +57,7 @@ Tomcrypt_Init(Tcl_Interp *interp)
     }
 
     state = (TomcryptState*)Tcl_Alloc(sizeof(TomcryptState));
-    state->cipherHashCount = 0;
+    state->hashCount = 0;
     ns = Tcl_CreateNamespace(interp, "::tomcrypt",
         (ClientData)state, TomcryptCleanup);
     if((err = initCiphers(interp, state)) != TCL_OK){

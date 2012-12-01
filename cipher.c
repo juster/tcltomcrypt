@@ -285,8 +285,7 @@ regCipherTcl(Tcl_Interp *interp, CipherDesc *desc,
         return TCL_ERROR;
     }
 
-    hashPtr = &state->cipherHashes[state->cipherHashCount++];
-    Tcl_InitHashTable(hashPtr, TCL_STRING_KEYS);
+    hashPtr = TomcryptHashTable(state);
     createCipherCmds(interp, desc, hashPtr);
 
     return TCL_OK;
