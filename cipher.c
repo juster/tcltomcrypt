@@ -298,23 +298,56 @@ initCiphers(Tcl_Interp *interp, TomcryptState *state)
 #define RC(C)\
     if(regCipherTcl(interp, & C##_desc, "::tomcrypt::cipher", state) != TCL_OK)\
         return TCL_ERROR;
+#ifdef LTC_BLOWFISH
     RC(blowfish);
+#endif
+#ifdef LTC_XTEA
     RC(xtea);
+#endif
+#ifdef LTC_RC2
     RC(rc2);
+#endif
+#ifdef LTC_RC5
     RC(rc5);
+#endif
+#ifdef LTC_RC6
     RC(rc6);
+#endif
+#ifdef LTC_SAFERP
     RC(saferp);
+#endif
+#ifdef LTC_RIJNDAEL
+    RC(rijndael);
     RC(aes);
+#endif
+#ifdef LTC_TWOFISH
     RC(twofish);
+#endif
+#ifdef LTC_DES
     RC(des);
     RC(des3);
+#endif
+#ifdef LTC_CAST5
     RC(cast5);
+#endif
+#ifdef LTC_NOEKEON
     RC(noekeon);
+#endif
+#ifdef LTC_SKIPJACK
     RC(skipjack);
+#endif
+#ifdef LTC_ANUBIS
     RC(anubis);
+#endif
+#ifdef LTC_KHAZAD
     RC(khazad);
+#endif
+#ifdef LTC_KSEED
     RC(kseed);
+#endif
+#ifdef LTC_KASUMI
     RC(kasumi);
+#endif
 #undef RC
 
     return TCL_OK;
