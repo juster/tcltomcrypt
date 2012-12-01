@@ -12,7 +12,7 @@ tomerr(Tcl_Interp *interp, int err)
     return TCL_ERROR;
 }
 
-void
+static void
 TomcryptCleanup(ClientData cdata)
 {
     TomcryptState *state;
