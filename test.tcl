@@ -1,4 +1,4 @@
-lappend auto_path .
+set auto_path .
 package require tomcrypt
 
 array set blowfish $tomcrypt::cipher(blowfish)
