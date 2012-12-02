@@ -6,6 +6,7 @@ typedef const struct ltc_cipher_descriptor CipherDesc;
 typedef (*CipherFunc)(const unsigned char *, unsigned char *, symmetric_key *);
 typedef struct CipherState {
     int uid;
+    int refCount;
     Tcl_HashTable *hash;
     CipherDesc *desc;
 } CipherState;
@@ -28,12 +29,16 @@ CipherCleanup(ClientData cdata)
     Tcl_HashEntry *entryPtr;
     Tcl_HashSearch search;
 
-    fprintf(stderr, "DBG: CipherCleanup\n");
     state = (CipherState*)cdata;
+    if(--state->refCount > 0){
+        return;
+    }
+    fprintf(stderr, "DBG: CipherCleanup\n");
     while(entryPtr = Tcl_FirstHashEntry(state->hash, &search)){
         fprintf(stderr, "DBG: deleting symkey for %s\n", state->desc->name);
         deleteSymKey(state->desc, entryPtr);
     }
+    Tcl_Free((char*)state);
     return;
 }
 
@@ -248,21 +253,32 @@ createCipherCmds(Tcl_Interp *interp, CipherDesc *desc, Tcl_HashTable *hash)
     state->uid = 0;
     state->hash = hash;
     state->desc = desc;
+    state->refCount = 0;
+
     snprintf(cmd, 128, "::tomcrypt::%s_setup", desc->name);
     Tcl_CreateObjCommand(interp, cmd, CipherSetup,
-        (ClientData)state, NULL);
+        (ClientData)state, CipherCleanup);
+    ++state->refCount;
+
     snprintf(cmd, 128, "::tomcrypt::%s_ecb_encrypt", desc->name);
     Tcl_CreateObjCommand(interp, cmd, CipherECBEncrypt,
-        (ClientData)state, NULL);
+        (ClientData)state, CipherCleanup);
+    ++state->refCount;
+
     snprintf(cmd, 128, "::tomcrypt::%s_ecb_decrypt", desc->name);
     Tcl_CreateObjCommand(interp, cmd, CipherECBDecrypt,
-        (ClientData)state, NULL);
+        (ClientData)state, CipherCleanup);
+    ++state->refCount;
+
     snprintf(cmd, 128, "::tomcrypt::%s_done", desc->name);
     Tcl_CreateObjCommand(interp, cmd, CipherDone,
         (ClientData)state, CipherCleanup);
+    ++state->refCount;
+
     snprintf(cmd, 128, "::tomcrypt::%s_keysize", desc->name);
     Tcl_CreateObjCommand(interp, cmd, CipherKeysize,
-        (ClientData)state, NULL);
+        (ClientData)state, CipherCleanup);
+    ++state->refCount;
 
     return;
 }
