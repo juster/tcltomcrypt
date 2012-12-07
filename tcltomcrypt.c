@@ -64,5 +64,9 @@ Tomcrypt_Init(Tcl_Interp *interp)
         Tcl_DeleteNamespace(ns);
         return err;
     }
+    if((err = initModes(interp, state)) != TCL_OK){
+        Tcl_DeleteNamespace(ns);
+        return err;
+    }
     return TCL_OK;
 }
