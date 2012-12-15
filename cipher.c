@@ -33,7 +33,6 @@ CipherCleanup(ClientData cdata)
     if(--state->refCount > 0){
         return;
     }
-    fprintf(stderr, "DBG: CipherCleanup\n");
     while(entryPtr = Tcl_FirstHashEntry(state->hash, &search)){
         fprintf(stderr, "DBG: deleting symkey for %s\n", state->desc->name);
         deleteSymKey(state->desc, entryPtr);
