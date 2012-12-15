@@ -10,6 +10,10 @@ typedef struct ModeState {
 
 typedef int xxx_start(int, const unsigned char*, const unsigned char*,
     int, int, void *);
+typedef int xxx_crypt(const unsigned char*, const unsigned char*,
+    unsigned long, void*);
+typedef int xxx_getiv(unsigned char *, unsigned long *, void *);
+typedef int xxx_setiv(const unsigned char *, unsigned long, void *);
 
 typedef int mode_done(void *);
 
@@ -17,6 +21,10 @@ typedef struct XXXModeDesc {
     char *name;
     int keySize;
     xxx_start *start;
+    xxx_crypt *encrypt;
+    xxx_crypt *decrypt;
+    xxx_getiv *getiv;
+    xxx_setiv *setiv;
     mode_done *done;
 } XXXModeDesc;
 
@@ -27,11 +35,29 @@ typedef struct XXXModeState {
     struct XXXModeDesc *desc;
 } XXXModeState;
 
+#warning warning spam is about void pointers!
 /* this causes tons of warnings because we use void pointers */
 static XXXModeDesc xxxDescriptors[] = {
-#ifdef LTC_CBC_MODE
-    { "cbc", sizeof(symmetric_CBC), cbc_start, cbc_done }
+#define MODE(L, U) {\
+    #L, sizeof(symmetric_##U),\
+    L##_start, L##_encrypt, L##_decrypt, NULL, NULL, L##_done },
+#define MODEIV(L, U) {\
+    #L, sizeof(symmetric_##U),\
+    L##_start, L##_encrypt, L##_decrypt, L##_getiv, L##_setiv, L##_done },
+#ifdef LTC_ECB_MODE
+    MODE(ecb, ECB)
 #endif
+#ifdef LTC_CFB_MODE
+    MODEIV(cfb, CFB)
+#endif
+#ifdef LTC_CBC_MODE
+    MODEIV(cbc, CBC)
+#endif
+#ifdef LTC_OFB_MODE
+    MODEIV(ofb, OFB)
+#endif
+#undef MODE
+#undef MODEIV
 };
 
 static Tcl_Obj *
@@ -143,7 +169,8 @@ createXXXModes(Tcl_Interp *interp, TomcryptState *tomState)
     XXXModeState *mode;
     char name[128];
     int i;
-    for(i=0; i<(sizeof(xxxDescriptors)/sizeof(XXXModeDesc)); i++){
+    int len;
+    for(i=0, len=sizeof(xxxDescriptors)/sizeof(XXXModeDesc); i<len; i++){
         mode = (XXXModeState*)Tcl_Alloc(sizeof(XXXModeState));
         mode->uid = 0;
         mode->refCount = 0;

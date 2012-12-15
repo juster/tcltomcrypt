@@ -26,7 +26,6 @@ TomcryptCleanup(ClientData cdata)
     fprintf(stderr, "DBG: TomcryptCleanup\n");
     state = (TomcryptState*)cdata;
     for(i=0; i<state->hashCount; i++){
-        fprintf(stderr, "DBG: deleting hash %d\n", i);
         Tcl_DeleteHashTable(state->hashes+i);
     }
     Tcl_Free((char*)state);
