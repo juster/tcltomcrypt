@@ -147,6 +147,49 @@ XXXModeStart(ClientData cdata, Tcl_Interp *interp,
     return TCL_OK;
 }
 
+static int
+XXXModeCrypt(ClientData cdata, Tcl_Interp *interp,
+    int objc, Tcl_Obj *const objv[], xxx_crypt *funcPtr)
+{
+    unsigned char *src, *dest;
+    int srcLen;
+    void *keyPtr;
+    int err;
+    Tcl_Obj *result;
+
+    if(objc != 3){
+        Tcl_WrongNumArgs(interp, 1, objv, "handle data");
+        return TCL_ERROR;
+    }
+
+    keyPtr = findModeKey(objv[1], (ModeState*)cdata);
+    src = Tcl_GetByteArrayFromObj(objv[2], &srcLen);
+    result = Tcl_GetObjResult(interp);
+    Tcl_SetByteArrayLength(result, srcLen);
+    dest = Tcl_GetByteArrayFromObj(result, NULL);
+    
+    if((err = funcPtr(src, dest, srcLen, keyPtr)) != CRYPT_OK){
+        return tomerr(interp, err);
+    }
+    return TCL_OK;
+}
+
+static int
+XXXModeEncrypt(ClientData cdata, Tcl_Interp *interp,
+    int objc, Tcl_Obj *const objv[])
+{
+    return XXXModeCrypt(cdata, interp, objc, objv,
+        ((XXXModeState *)cdata)->desc->encrypt);
+}
+
+static int
+XXXModeDecrypt(ClientData cdata, Tcl_Interp *interp,
+    int objc, Tcl_Obj *const objv[])
+{
+    return XXXModeCrypt(cdata, interp, objc, objv,
+        ((XXXModeState *)cdata)->desc->decrypt);
+}
+
 static void
 XXXModeCleanup(ClientData cdata)
 {
@@ -179,7 +222,17 @@ createXXXModes(Tcl_Interp *interp, TomcryptState *tomState)
 
         snprintf(name, 128, "::tomcrypt::%s_start", mode->desc->name);
         Tcl_CreateObjCommand(interp, name, XXXModeStart,
-            (ClientData)mode, XXXModeCleanup);
+            (ClientData)mode, NULL);
+        ++mode->refCount;
+
+        snprintf(name, 128, "::tomcrypt::%s_encrypt", mode->desc->name);
+        Tcl_CreateObjCommand(interp, name, XXXModeEncrypt,
+            (ClientData)mode, NULL);
+        ++mode->refCount;
+        
+        snprintf(name, 128, "::tomcrypt::%s_decrypt", mode->desc->name);
+        Tcl_CreateObjCommand(interp, name, XXXModeDecrypt,
+            (ClientData)mode, NULL);
         ++mode->refCount;
     }
     return TCL_OK;
