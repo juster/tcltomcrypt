@@ -1,64 +1,7 @@
 #include <tcl.h>
 #include <tomcrypt.h>
 #include "tcltomcrypt.h"
-
-typedef struct ModeState {
-    int uid;
-    Tcl_HashTable *keyStore;
-    int refCount;
-} ModeState;
-
-typedef int xxx_start(int, const unsigned char*, const unsigned char*,
-    int, int, void *);
-typedef int xxx_crypt(const unsigned char*, const unsigned char*,
-    unsigned long, void*);
-typedef int xxx_getiv(unsigned char *, unsigned long *, void *);
-typedef int xxx_setiv(const unsigned char *, unsigned long, void *);
-
-typedef int mode_done(void *);
-
-typedef struct XXXModeDesc {
-    char *name;
-    int keySize;
-    xxx_start *start;
-    xxx_crypt *encrypt;
-    xxx_crypt *decrypt;
-    xxx_getiv *getiv;
-    xxx_setiv *setiv;
-    mode_done *done;
-} XXXModeDesc;
-
-typedef struct XXXModeState {
-    int uid;
-    Tcl_HashTable *keyStore;
-    int refCount;
-    struct XXXModeDesc *desc;
-} XXXModeState;
-
-#warning warning spam is about void pointers!
-/* this causes tons of warnings because we use void pointers */
-static XXXModeDesc xxxDescriptors[] = {
-#define MODE(L, U) {\
-    #L, sizeof(symmetric_##U),\
-    L##_start, L##_encrypt, L##_decrypt, NULL, NULL, L##_done },
-#define MODEIV(L, U) {\
-    #L, sizeof(symmetric_##U),\
-    L##_start, L##_encrypt, L##_decrypt, L##_getiv, L##_setiv, L##_done },
-#ifdef LTC_ECB_MODE
-    MODE(ecb, ECB)
-#endif
-#ifdef LTC_CFB_MODE
-    MODEIV(cfb, CFB)
-#endif
-#ifdef LTC_CBC_MODE
-    MODEIV(cbc, CBC)
-#endif
-#ifdef LTC_OFB_MODE
-    MODEIV(ofb, OFB)
-#endif
-#undef MODE
-#undef MODEIV
-};
+#include "mode.h"
 
 static Tcl_Obj *
 regModeKey(void *key, ModeState *state)
@@ -76,21 +19,28 @@ regModeKey(void *key, ModeState *state)
 }
 
 static void *
-findModeKey(Tcl_Obj *hndObj, ModeState *state)
+findModeKey(Tcl_Interp *interp, Tcl_Obj *hashKey, ModeState *state,
+    Tcl_HashEntry **entryDest)
 {
     Tcl_HashEntry *entryPtr;
-    if(!(entryPtr = Tcl_FindHashEntry(state->keyStore, Tcl_GetString(hndObj)))){
+    Tcl_Obj *resultObj;
+    
+    if(!(entryPtr = Tcl_FindHashEntry(state->keyStore, Tcl_GetString(hashKey)))){
+        Tcl_SetResult(interp, "unknown cipher mode handle", NULL);
         return NULL;
+    }
+    if(entryDest){
+        *entryDest = entryPtr;
     }
     return (void*)Tcl_GetHashValue(entryPtr);
 }
 
 static void
-deleteModeKey(Tcl_HashEntry *entryPtr, mode_done *doneFunc)
+deleteModeKey(Tcl_HashEntry *entryPtr, ModeState *state)
 {
     void *key;
     key = (void*)Tcl_GetHashValue(entryPtr);
-    doneFunc(key);
+    state->desc->done(key);
     Tcl_Free(key);
     Tcl_DeleteHashEntry(entryPtr);
     return;
@@ -116,6 +66,9 @@ XXXModeStart(ClientData cdata, Tcl_Interp *interp,
         Tcl_WrongNumArgs(interp, 1, objv, "cipher iv key rounds");
         return TCL_ERROR;
     }
+    /* Remember: only a cipher previously registered with register_cipher can be
+     * looked up later using find_cipher.
+     */
     if((idx = find_cipher(Tcl_GetString(objv[1]))) == -1){
         return tomerr(interp, idx);
     }
@@ -162,7 +115,9 @@ XXXModeCrypt(ClientData cdata, Tcl_Interp *interp,
         return TCL_ERROR;
     }
 
-    keyPtr = findModeKey(objv[1], (ModeState*)cdata);
+    if(!(keyPtr = findModeKey(interp, objv[1], (ModeState*)cdata, NULL))){
+        return TCL_ERROR;
+    }
     src = Tcl_GetByteArrayFromObj(objv[2], &srcLen);
     result = Tcl_GetObjResult(interp);
     Tcl_SetByteArrayLength(result, srcLen);
@@ -190,6 +145,28 @@ XXXModeDecrypt(ClientData cdata, Tcl_Interp *interp,
         ((XXXModeState *)cdata)->desc->decrypt);
 }
 
+static int
+XXXModeDone(ClientData cdata, Tcl_Interp *interp,
+    int objc, Tcl_Obj *const objv[])
+{
+    void *key;
+    XXXModeState *state;
+    int err;
+    Tcl_Obj *resultObj;
+    
+    state = (XXXModeState*)cdata;
+    Tcl_HashEntry *entryPtr;
+    if(objc != 2){
+        Tcl_WrongNumArgs(interp, 1, objv, "handle");
+        return TCL_ERROR;
+    }
+    if(!findModeKey(interp, objv[1], (ModeState*)state, &entryPtr)){
+        return TCL_ERROR;
+    }
+    deleteModeKey(entryPtr, (ModeState*)state);
+    return TCL_OK;
+}
+
 static void
 XXXModeCleanup(ClientData cdata)
 {
@@ -201,7 +178,7 @@ XXXModeCleanup(ClientData cdata)
        return;
     }
     while((entryPtr = Tcl_FirstHashEntry(state->keyStore, &search))){
-        deleteModeKey(entryPtr, state->desc->done);
+        deleteModeKey(entryPtr, (ModeState*)state);
     }
     Tcl_Free((char*)state);
 }
@@ -222,17 +199,22 @@ createXXXModes(Tcl_Interp *interp, TomcryptState *tomState)
 
         snprintf(name, 128, "::tomcrypt::%s_start", mode->desc->name);
         Tcl_CreateObjCommand(interp, name, XXXModeStart,
-            (ClientData)mode, NULL);
+            (ClientData)mode, XXXModeCleanup);
         ++mode->refCount;
 
         snprintf(name, 128, "::tomcrypt::%s_encrypt", mode->desc->name);
         Tcl_CreateObjCommand(interp, name, XXXModeEncrypt,
-            (ClientData)mode, NULL);
+            (ClientData)mode, XXXModeCleanup);
         ++mode->refCount;
         
         snprintf(name, 128, "::tomcrypt::%s_decrypt", mode->desc->name);
         Tcl_CreateObjCommand(interp, name, XXXModeDecrypt,
-            (ClientData)mode, NULL);
+            (ClientData)mode, XXXModeCleanup);
+        ++mode->refCount;
+        
+        snprintf(name, 128, "::tomcrypt::%s_done", mode->desc->name);
+        Tcl_CreateObjCommand(interp, name, XXXModeDone,
+            (ClientData)mode, XXXModeCleanup);
         ++mode->refCount;
     }
     return TCL_OK;
